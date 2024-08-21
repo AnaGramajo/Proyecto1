@@ -11,6 +11,9 @@ portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 #define temperatura 35 // Sensor temperatura
 #define ADC_VREF_mV    3300.0 // in millivolt
 #define ADC_RESOLUTION 4096.0
+#define ledrojo 23
+#define ledverde 22
+#define ledazul 21
 
 volatile bool boton_pressed = false;
 float temp = 0;
@@ -18,6 +21,7 @@ float temp = 0;
 // Prototipos de funciones
 void enviar_temp(float t);
 float leer_temp(void);
+void color(int R, int G, int B);
 
 // set up de los feeds
 AdafruitIO_Feed *temp_ = io.feed("temperatura");
@@ -62,6 +66,14 @@ void loop() {
     temp = leer_temp();
     //Funciones para enviar los datos al dashboard
     enviar_temp(temp);
+    //Cambia el color del led según el valor de temp
+    if (temp < 37.00) {
+      color(0,255,0);
+    } else if (37.00 < temp < 37.50) {
+      color(255,255,0);
+    } else {
+      color(255,0,0);
+    }
     boton_pressed = false;
   }
 
@@ -85,4 +97,10 @@ void enviar_temp(float t) {
   Serial.print("sending -> ");
   Serial.println(t);
   temp_->save(t);
+}
+
+void color(int R, int G, int B) {
+  analogWrite(ledrojo,   R);
+  analogWrite(ledverde, G);
+  analogWrite(ledazul,  B);
 }
