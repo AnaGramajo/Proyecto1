@@ -1,0 +1,88 @@
+#include <Arduino.h>
+
+/************************** Configuration ***********************************/
+
+#include "config.h"
+portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
+
+// Variables globales
+
+#define boton 34 // Botón
+#define temperatura 35 // Sensor temperatura
+#define ADC_VREF_mV    3300.0 // in millivolt
+#define ADC_RESOLUTION 4096.0
+
+volatile bool boton_pressed = false;
+float temp = 0;
+
+// Prototipos de funciones
+void enviar_temp(float t);
+float leer_temp(void);
+
+// set up de los feeds
+AdafruitIO_Feed *temp_ = io.feed("temperatura");
+
+// Interrupción 
+void IRAM_ATTR B_isr() {
+  portENTER_CRITICAL_ISR(&mux);
+    boton_pressed = true;
+  portEXIT_CRITICAL_ISR(&mux);
+}
+
+void setup() {
+
+  // inicia la conexión serial
+  Serial.begin(115200);
+
+  while(! Serial);
+  Serial.print("Connecting to Adafruit IO");
+  // conectarse a io.adafruit.com
+  io.connect();
+
+  // esperar a que se conecte
+  while(io.status() < AIO_CONNECTED) {
+    Serial.print(".");
+    delay(500);
+  }
+  
+  Serial.println();
+  Serial.println(io.statusText());
+
+  pinMode(boton, INPUT_PULLDOWN);
+  attachInterrupt(boton, B_isr, RISING);
+
+}
+
+void loop() {
+
+  io.run();
+  
+  if (boton_pressed) {
+    //se lee el sensor de temperatura
+    temp = leer_temp();
+    //Funciones para enviar los datos al dashboard
+    enviar_temp(temp);
+    boton_pressed = false;
+  }
+
+  delay(3000);
+
+}
+
+// Otras funciones
+
+float leer_temp(void) {
+  // lee el valor ADC
+  int adcVal = analogRead(temperatura);
+  //  convierte el valor ADC a voltaje (mV)
+  float milliVolt = adcVal * (ADC_VREF_mV / ADC_RESOLUTION);
+  // convierte el voltaje a °C
+  float tempC = milliVolt / 10;
+  return (tempC);
+}
+
+void enviar_temp(float t) {
+  Serial.print("sending -> ");
+  Serial.println(t);
+  temp_->save(t);
+}
