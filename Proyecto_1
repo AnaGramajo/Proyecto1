@@ -1,35 +1,42 @@
 #include <Arduino.h>
 
-/************************** Configuration ***********************************/
+/************************** Configuración ***********************************/
 
 #include "config.h"
 portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 
 // Variables globales
 
-#define boton 34 // Botón
+#define boton 26 // Botón
 #define temperatura 35 // Sensor temperatura
-#define ADC_VREF_mV    3300.0 // in millivolt
+#define ADC_VREF_mV    3300.0 // Voltaje en milivoltios
 #define ADC_RESOLUTION 4096.0
-#define ledrojo 23
-#define ledverde 22
-#define ledazul 21
+#define ledrojo 21
+#define ledverde 19
+#define ledazul 18
+#define canalPWM 9
+#define freqPWM 50
+#define resPWM 10
+#define servo 23
 
-volatile bool boton_pressed = false;
+volatile bool boton_p = false;
 float temp = 0;
+int servoAntes = 30; // última posición del servo
+int servoAhora = 0; // Nueva posición del servo
 
 // Prototipos de funciones
 void enviar_temp(float t);
 float leer_temp(void);
 void color(int R, int G, int B);
+void colocarServo(int antes, int ahora);
 
 // set up de los feeds
 AdafruitIO_Feed *temp_ = io.feed("temperatura");
 
 // Interrupción 
-void IRAM_ATTR B_isr() {
+void IRAM_ATTR boton_isr() {
   portENTER_CRITICAL_ISR(&mux);
-    boton_pressed = true;
+    boton_p = true;
   portEXIT_CRITICAL_ISR(&mux);
 }
 
@@ -53,28 +60,50 @@ void setup() {
   Serial.println(io.statusText());
 
   pinMode(boton, INPUT_PULLDOWN);
-  attachInterrupt(boton, B_isr, RISING);
+  attachInterrupt(boton, boton_isr, RISING);
 
+  pinMode(ledrojo,OUTPUT);
+  pinMode(ledverde,OUTPUT);
+  pinMode(ledazul,OUTPUT);
+  
+  ledcSetup(canalPWM, freqPWM, resPWM);
+  ledcAttachPin(servo, canalPWM);
+  // Configuración inicial del servo
+  ledcWrite(canalPWM, servoAntes);
 }
 
 void loop() {
 
   io.run();
   
-  if (boton_pressed) {
-    //se lee el sensor de temperatura
+  if (boton_p) {
+    // Se lee el sensor de temperatura
     temp = leer_temp();
-    //Funciones para enviar los datos al dashboard
+    // Función para enviar los datos al dashboard
     enviar_temp(temp);
-    //Cambia el color del led según el valor de temp
+    // Cambia el color del led y la posición del servo según el valor de temp
+    if (temp > 37.5) {
+      color(255,0,0);
+      servoAhora = 120;
+      colocarServo(servoAntes,servoAhora);
+      servoAntes = servoAhora;
+      delay(3000);
+    }
+    if (temp > 37.0 && temp < 37.5) {
+      color(255,255,0);
+      servoAhora = 84;
+      colocarServo(servoAntes,servoAhora);
+      servoAntes = servoAhora;
+      delay(3000);
+    }
     if (temp < 37.00) {
       color(0,255,0);
-    } else if (37.00 < temp < 37.50) {
-      color(255,255,0);
-    } else {
-      color(255,0,0);
+      servoAhora = 48;
+      colocarServo(servoAntes,servoAhora);
+      servoAntes = servoAhora;
+      delay(3000);
     }
-    boton_pressed = false;
+    boton_p = false;
   }
 
   delay(3000);
@@ -103,4 +132,18 @@ void color(int R, int G, int B) {
   analogWrite(ledrojo,   R);
   analogWrite(ledverde, G);
   analogWrite(ledazul,  B);
+}
+
+void colocarServo(int antes, int ahora) {
+  if (antes < ahora) {
+    for(int i=antes; i<ahora; i++) {
+      ledcWrite(canalPWM, i);
+    }
+  } else if (antes > ahora) {
+    for(int i=antes; i>ahora; i--) {
+      ledcWrite(canalPWM, i);
+    }
+  } else {
+    ledcWrite(canalPWM, antes);
+  }
 }
