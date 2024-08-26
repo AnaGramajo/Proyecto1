@@ -1,9 +1,11 @@
 #include <Arduino.h>
+#include <driver/ledc.h>
 #include "display7seg.h"
 
 /************************** Configuración ***********************************/
 
 #include "config.h"
+
 portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 
 // Variables globales
@@ -15,7 +17,7 @@ portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
   #define ledrojo 5 
   #define ledverde 4
   #define ledazul 2
-  #define servo 14
+  #define servo 13
   // Display
   #define dis1 27 
   #define dis2 33
@@ -41,6 +43,8 @@ portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
   #define azulPWM 2 // Canal del led azul
   #define freqPWM 50 // Frecuencia
   #define resPWM 10 // Resolución
+  #define freqPWMleds 5000 // Frecuencia en Hz para los leds
+  #define resPWMleds 8 // Resolución en bits para los leds
 
   // Otras variables
 
@@ -95,17 +99,15 @@ void setup() {
   pinMode(ledverde,OUTPUT);
   pinMode(ledazul,OUTPUT);
   // PWM del led rojo
-  ledcSetup(rojoPWM, freqPWM, resPWM); 
+  ledcSetup(rojoPWM, freqPWMleds, resPWMleds); 
   ledcAttachPin(ledrojo, rojoPWM);
   // PWM del led verde
-  ledcSetup(verdePWM, freqPWM, resPWM); 
+  ledcSetup(verdePWM, freqPWMleds, resPWMleds); 
   ledcAttachPin(ledverde, verdePWM);
   // PWM del led azul
-  ledcSetup(azulPWM, freqPWM, resPWM); 
+  ledcSetup(azulPWM, freqPWMleds, resPWMleds); 
   ledcAttachPin(ledazul, azulPWM);
-
-  // Setup del servo
-  pinMode(servo,OUTPUT);  
+  
   // PWM del servo
   ledcSetup(canalPWM, freqPWM, resPWM);
   ledcAttachPin(servo, canalPWM);
@@ -180,9 +182,9 @@ void loop() {
   
   void color(int R, int G, int B) {
     // Actualiza el color de cada led
-    analogWrite(ledrojo,   R);
-    analogWrite(ledverde, G);
-    analogWrite(ledazul,  B);
+    ledcWrite(rojoPWM,   R);
+    ledcWrite(verdePWM, G);
+    ledcWrite(azulPWM,  B);
   }
   
   void colocarServo(int antes, int ahora) {
