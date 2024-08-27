@@ -60,9 +60,11 @@ portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
   void color(int R, int G, int B); // Cambia el color del led.
   void colocarServo(int antes, int ahora); // Mueve el servo.
   void displayTemp(float T); // Muestra la temperatura en el display.
+  void enviar_posicion(int p); // Enviar la posición del reloj de temperatura al dashboard
 
 // set up del feed
 AdafruitIO_Feed *temp_ = io.feed("temperatura");
+AdafruitIO_Feed *posicion_ = io.feed("reloj");
 
 // Interrupción del botón
 void IRAM_ATTR boton_isr() {
@@ -128,10 +130,10 @@ void setup() {
 
 void loop() {
 
-  io.run();
-
   // Espera la interrupcón del botón
   if (boton_p) {
+    // Se inicia Adafruit
+    io.run();
     // Se lee el sensor de temperatura
     temp = leer_temp();
     // Envía los datos al dashboard
@@ -142,18 +144,21 @@ void loop() {
       servoAhora = 120;
       colocarServo(servoAntes,servoAhora);
       servoAntes = servoAhora;
+      enviar_posicion(135);
     }
     if (temp > 37.0 && temp < 37.5) {
       color(255,255,0);
       servoAhora = 84;
       colocarServo(servoAntes,servoAhora);
       servoAntes = servoAhora;
+      enviar_posicion(90);
     }
     if (temp < 37.00) {
       color(0,255,0);
       servoAhora = 48;
       colocarServo(servoAntes,servoAhora);
       servoAntes = servoAhora;
+      enviar_posicion(45);
     }
     boton_p = false;
   }
@@ -174,10 +179,18 @@ void loop() {
   
   void enviar_temp(float t) {
     // Muestra lo que se envía en la pantalla serial
-    Serial.print("sending -> ");
+    Serial.print("temperatura -> ");
     Serial.println(t);
     // Envía el valor
     temp_->save(t);
+  }
+
+  void enviar_posicion(int p) {
+    // Muestra lo que se envía en la pantalla serial
+    Serial.print("posición servo -> ");
+    Serial.println(p);
+    // Envía el valor
+    posicion_->save(p);
   }
   
   void color(int R, int G, int B) {
